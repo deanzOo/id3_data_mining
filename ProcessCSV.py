@@ -63,4 +63,4 @@ class ProcessCSV:
         for row in range(len(self.rows) - 1):
             colNum = len(self.rows[row])
             if self.rows[row][colNum-1] == '':
-                self.rows.pop(elior)
+                self.rows.pop(row)
