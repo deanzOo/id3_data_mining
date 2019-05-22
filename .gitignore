@@ -2,3 +2,4 @@ train.csv
 Structure.txt
 test.csv
 __pycache__/
+.idea/
