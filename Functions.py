@@ -4,6 +4,8 @@ def NumericAverage(column):
     count = 0
     for index in range(len(column)):
         # if type(column[index]) == int or type(column[index]) == float:
+        if column[index] == '':
+            column[index] = '0'
         sum += float(column[index])
         count += 1
         # else:
