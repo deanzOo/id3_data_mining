@@ -5,88 +5,103 @@ from functools import reduce
 
 class ProcessCSV:
     def __init__(self):
-        self.tags = {}              # Structure of the data
-        self.columns = {}           # each key = 1 actual column from the file
-        self.file = ''              # this var will hold the file reader
-        # for each attribute, hold a value to fill in in case its empty in the actual data
+
+        # structure and train files
+        self.structure, self.train = None, None
+
+        # {
+        #   ATTRIBUTE_NAME: 'NUMERIC' || [possible attribute value]
+        # }
+        self.tags = {}
+
+        # {
+        #   ATTRIBUTE_NAME: [attribute values]
+        # }
+        self.columns = {}
+
+        # {
+        #   ATTRIBUTE_NAME: filler_attribute_value
+        # }
         self.fillers = {}
-        self.totalClasses = 0       # counter for how many classifications we have
-        self.classesCounters = {}   # counters for each of the classification
-        self.classEntropy = 0       # entropy level of the current classification
 
-    def loadFile(self, filePath):
-        self.file = csv.reader(open(filePath, 'r'))
+        # {
+        #   CLASSIFICATION_NAME: number of instances with this classification
+        # }
+        self.classifications_counters = {}
 
-    def loadTags(self, structureFilePath):
-        structureFile = open(structureFilePath, 'r')
-        for line in structureFile:
+        # total number of instances
+        self.instances_number = 0
+        # entropy level of the class attribute from known data
+        self.class_entropy = 0
+
+        # flags to make sure some functions will not work when not ready
+        self.clean, self.files_loaded = False, False
+
+    def open_files(self, path):
+        try:
+            # Try opening train file and structure file
+            self.structure = open(path + '/Structure.txt', 'r')
+            self.train = csv.DictReader(open(path + '/train.csv', 'r'))
+        except FileNotFoundError:
+            print('Files not found')
+        # Start deconstructing the files into workable data
+        self.files_loaded = not self.files_loaded
+        self.loadTags()
+        self.construct_columns()
+        self.constructFillers()
+
+    def loadTags(self):
+        for line in self.structure:
             line = line.strip('\n').strip('@ATTRIBUTE ').split(' ')
             if line[1] != 'NUMERIC':
                 line[1] = line[1].strip('{').strip('}').split(',')
             self.tags[line[0]] = line[1]
 
-    def constructColumns(self):
-        columnList = []
-        colLen = len(self.tags)
-        for _ in range(colLen):
-            columnList.append([])
-        for row in self.file:
-            for colIndex in range(len(self.tags)):
-                columnList[colIndex].append(row[colIndex])
-        for column in columnList:
-            column.pop(0)
-        index = 0
-        for x in self.tags:
-            self.columns[x] = columnList[index]
-            index += 1
-
-    def getColumns(self):
-        return self.columns
-
-    def getFile(self):
-        return self.file
-
-    def getTags(self):
-        return self.tags
-
-    def getFillers(self):
-        return self.fillers
-
-    def getClassesEntropy(self):
-        return self.classEntropy
-
-    def getClassesCounter(self):
-        return self.classesCounters
-
-    def getTotalClasses(self):
-        return self.totalClasses
+    def construct_columns(self):
+        for row in self.train:
+            for column in row:
+                if column not in self.columns:
+                    self.columns[column] = []
+                self.columns[column].append(row[column])
 
     def constructFillers(self):
         for key in self.tags:
             self.fillers[key] = NumericAverage(
                 self.columns[key]) if self.tags[key] == 'NUMERIC' else FindingCommonValue(self.columns[key])
 
-    def findRowWithEmptyClassAndDelete(self):
+    def clean_up(self):
+        if self.files_loaded:
+            self.clean = not self.clean
+            self.delete_row_where_empty_class()
+            self.instances_number = len(self.columns['class'])
+            self.fill_empty_values()
+            # after cleanup, no need to wait for user input, can start analyzing some of the data
+            self.count_classes()
+            self.calc_classes_entropy()
+
+    def delete_row_where_empty_class(self):
+        # Iterate over the class column values
         for index in range(len(self.columns['class']) - 1):
             if self.columns['class'][index] == '':
+                # if empty, remove the whole row (meaning go over all columns, and pop the row number)
                 for column in self.columns:
                     self.columns[column].pop(index)
 
-    def findEmptyColumn(self):
+    def fill_empty_values(self):
         for column in self.columns:
             for index in range(len(self.columns[column])):
                 if self.columns[column][index] == '':
                     self.columns[column][index] = self.fillers[column]
 
-    def findClassEntropy(self):
+    def count_classes(self):
         for val in self.columns['class']:
-            if val in self.classesCounters:
-                self.classesCounters[val] += 1
+            if val in self.classifications_counters:
+                self.classifications_counters[val] += 1
             else:
-                self.classesCounters[val] = 1
-        self.classEntropy = entropy(self.classesCounters.values())
-        self.totalClasses = reduce(
-            lambda x, y: x + y, self.classesCounters.values())
+                self.classifications_counters[val] = 1
+
+    def calc_classes_entropy(self):
+        self.class_entropy = entropy(self.classifications_counters.values())
 
     def findSplitPosition(self, column):
         bestGain = -1
@@ -100,7 +115,7 @@ class ProcessCSV:
                     'notBelowSplitPoint': {}
                 }
 
-                for specific_class in self.classesCounters:
+                for specific_class in self.classifications_counters:
                     entropyTable['belowSplitPoint'][specific_class] = 0
                     entropyTable['notBelowSplitPoint'][specific_class] = 0
 
@@ -121,8 +136,8 @@ class ProcessCSV:
                         part = totalSection / len(self.columns['age'])
                         info += part * entropy(entropyTable[section].values())
                     print('info: ', info)
-                    print('gain: ', self.classEntropy - info)
-                    bestGain = self.classEntropy - info
+                    print('gain: ', self.class_entropy - info)
+                    bestGain = self.class_entropy - info
                 else:
                     info = 0
                     for section in entropyTable:
@@ -131,12 +146,12 @@ class ProcessCSV:
                         part = totalSection / len(self.columns['age'])
                         info += part * entropy(entropyTable[section].values())
                     print('info: ', info)
-                    print('gain: ', self.classEntropy - info)
-                    if bestGain < self.classEntropy - info:
+                    print('gain: ', self.class_entropy - info)
+                    if bestGain < self.class_entropy - info:
                         bestSplit = splitPoint
-                        bestGain = self.classEntropy - info
+                        bestGain = self.class_entropy - info
 
                 print(entropyTable)
                 print('split point: ', splitPoint)
-        print('class entropy: ', self.classEntropy)
+        print('class entropy: ', self.class_entropy)
         print('best split point: ', bestSplit, 'gain is: ', bestGain)
