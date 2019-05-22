@@ -6,12 +6,15 @@ p.loadTags('Structure.txt')
 
 
 p.constructColumns()
-print('Columns are: \n', p.getColumns())
+
 p.constructFillers()
-print(p.getFillers())
-print('removing lines with empty class')
+
 p.findRowWithEmptyClassAndDelete()
 
-print('After removing lines columns are: \n', p.getColumns())
 p.findEmptyColumn()
-print('Filling blanks: \n', p.getColumns())
+
+p.findClassEntropy()
+p.findSplitPosition(p.getColumns()['age'])
+# print(p.getClassesCounter())
+# print(p.getTotalClasses())
+# print(p.getClassesEntropy())

@@ -1,4 +1,8 @@
+from math import log
+
 # Calculate Average by column index and lists of list matrix
+
+
 def NumericAverage(column):
     sum = 0
     count = 0
@@ -24,3 +28,14 @@ def FindingCommonValue(column):
         else:
             my_dict[key] += 1
     return [k for k in my_dict.keys() if my_dict[k] == max(my_dict.values())][0]
+
+
+def entropy(vals):
+    sum = 0.0
+    norm = 0.0
+    for v in vals:
+        norm += v
+    vals = [float(v) / norm for v in vals]
+    for v in vals:
+        sum += (v * log(v, 2)) if v != 0 else 0
+    return -1.0 * sum
