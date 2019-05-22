@@ -5,8 +5,10 @@ def NumericAverage(column):
     for index in range(len(column)):
         # if type(column[index]) == int or type(column[index]) == float:
         if column[index] == '':
-            column[index] = '0'
-        sum += float(column[index])
+            addition = 0
+        else:
+            addition = float(column[index])
+        sum += addition
         count += 1
         # else:
         # print('The Value is NOT Numeric or the cell is Empty')
