@@ -1,5 +1,6 @@
 from math import log
-
+import sys
+import time
 from functools import reduce
 # Calculate Average by column index and lists of list matrix
 
@@ -57,3 +58,14 @@ def calc_info(entropy_table, total_number_of_instances):
 
 def calc_gain(split_point, column, entropy_table, total_number_of_instances, total_entropy):
     return total_entropy - calc_info(entropy_table, total_number_of_instances)
+
+
+def progress(count, total, status=''):
+    bar_len = 60
+    filled_len = int(round(bar_len * count / float(total)))
+
+    percents = round(100.0 * count / float(total), 1)
+    bar = '=' * filled_len + '-' * (bar_len - filled_len)
+
+    sys.stdout.write('[%s] %s%s ...%s\r' % (bar, percents, '%', status))
+    sys.stdout.flush()

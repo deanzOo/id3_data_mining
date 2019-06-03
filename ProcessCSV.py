@@ -2,6 +2,7 @@ import csv
 from Functions import *
 import random
 import queue
+import datetime
 
 
 class ProcessCSV:
@@ -49,18 +50,18 @@ class ProcessCSV:
             print('Files not found')
         # Start deconstructing the files into workable data
         self.files_loaded = not self.files_loaded
-        self.loadTags()
-        self.construct_columns()
+        self.loadTags(path)
+        self.construct_columns(path)
         self.constructFillers()
 
-    def loadTags(self):
+    def loadTags(self, path):
         for line in self.structure:
             line = line.strip('\n').strip('@ATTRIBUTE ').split(' ')
             if line[1] != 'NUMERIC':
                 line[1] = line[1].strip('{').strip('}').split(',')
             self.tags[line[0]] = line[1]
 
-    def construct_columns(self):
+    def construct_columns(self, path):
         for row in self.train:
             for column in row:
                 if column not in self.columns:
@@ -214,6 +215,8 @@ class ProcessCSV:
             return sorted(bins)
 
     def discretisize(self, num_of_bins):
+        print('Discretisizing...')
+        print(datetime.datetime.now())
 
         def check_new_label(value, bins):
             for label_index in range(len(bins)):
@@ -227,6 +230,21 @@ class ProcessCSV:
                     self.columns[column], num_of_bins)
                 self.columns[column] = list(map(lambda x: check_new_label(
                     x, bins), self.columns[column]))
+
+        print('Finished Discretisizing')
+        print(datetime.datetime.now())
+        self.save_to_file('train', num_of_bins)
+
+    def save_to_file(self, filename, bins):
+        with open('{}_discretization_{}.csv'.format(filename, bins), 'w', newline='') as csvfile:
+            fieldnames = [attr for attr in self.tags]
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            for index in range(self.instances_number):
+                row = {}
+                for column in self.columns:
+                    row[column] = self.columns[column][index]
+                writer.writerow(row)
 
         # def get_attr_numbers(self):
         # attrs = {}
