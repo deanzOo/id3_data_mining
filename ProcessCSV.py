@@ -37,12 +37,9 @@ class ProcessCSV:
         self.clean, self.files_loaded = False, False
 
     def open_files(self, path):
-        try:
-            # Try opening train file and structure file
-            self.structure = open(path + '/Structure.txt', 'r')
-            self.train = csv.DictReader(open(path + '/train.csv', 'r'))
-        except FileNotFoundError:
-            print('Files not found')
+        # Try opening train file and structure file
+        self.structure = open(path + '/Structure.txt', 'r')
+        self.train = csv.DictReader(open(path + '/train.csv', 'r'))
         # Start deconstructing the files into workable data
         self.files_loaded = not self.files_loaded
         self.loadTags(path)
@@ -140,9 +137,7 @@ class ProcessCSV:
 
         # If column has 1 element, return the element
         if (len(column) == 1):
-            g = column[0][0]
-            print('for col: ', column, '\nbest gain: ', g)
-            return g
+            return column[0][0]
         # other wise check for all possible split points
         possible_split_points = set()
 
@@ -152,11 +147,8 @@ class ProcessCSV:
         for x in range(col_len):
             for y in range(x + 1, col_len):
                 possible_split_points.add((column[x][0] + column[y][0]) / 2)
-
         if len(possible_split_points) == 1:
-            g = possible_split_points.pop()
-            print('for col: ', column, '\nbest gain: ', g)
-            return g
+            return possible_split_points.pop()
         # calculate gains of each possible split point
         gains = dict(map(lambda split_point: (split_point,
                                               calc_gain(split_point,
@@ -180,13 +172,10 @@ class ProcessCSV:
             list(gains.values())), gains))
         # if found 1 best gain return it
         if len(best_gains) == 1:
-            print('for col: ', column, '\nbest gain: ', best_gains[0])
             return best_gains[0]
         else:
             # return some random split point with a highest gain
-            g = best_gains[random.randint(0, len(best_gains) - 1)]
-            print('for col: ', column, '\nbest gain: ', g)
-            return g
+            return best_gains[random.randint(0, len(best_gains) - 1)]
 
     def entropy_discretization(self, column, num_of_bins):
 
@@ -207,7 +196,7 @@ class ProcessCSV:
             def calc_split_index(column_to_split, best_split):
                 col = list(
                     filter(lambda x: x[0] < best_split, column_to_split))
-                return len(col) - 1 if len(col) > 0 else len(col)
+                return len(col)
 
             sorted_col = sorted(column)
             bins = []
@@ -217,13 +206,14 @@ class ProcessCSV:
             while(len(bins) < num_of_bins - 1):
                 if column_queue.not_empty:
                     current_col = column_queue.get()
-                    best_split = self.find_best_descritization_split_by_entropy(
-                        current_col)
-                    bins.append(best_split)
-                    split_index = calc_split_index(current_col, best_split)
-                    if (len(sorted_col) > 2):
-                        column_queue.put(sorted_col[:split_index + 1])
-                        column_queue.put(sorted_col[split_index + 1:])
+                    if len(current_col) > 1:
+                        best_split = self.find_best_descritization_split_by_entropy(
+                            current_col)
+                        bins.append(best_split)
+                        split_index = calc_split_index(current_col, best_split)
+                        if (len(current_col) > 2):
+                            column_queue.put(current_col[:split_index])
+                            column_queue.put(current_col[split_index:])
             return sorted(bins)
 
     def discretisize(self, num_of_bins):
