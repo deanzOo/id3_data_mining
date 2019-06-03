@@ -1,6 +1,4 @@
-train.csv
-Structure.txt
-test.csv
-__pycache__/
-.idea/
-AssignmentV2.pdf
+*.txt
+*/
+*.pdf
+*.csv
