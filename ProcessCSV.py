@@ -28,11 +28,6 @@ class ProcessCSV:
 
         self.classification_column = None
 
-        # {
-        #   CLASSIFICATION_NAME: number of instances with this classification
-        # }
-        self.classifications_counters = {}
-
         # total number of instances
         self.instances_number = 0
         # entropy level of the class attribute from known data
@@ -62,17 +57,18 @@ class ProcessCSV:
             self.tags[line[0]] = line[1]
 
     def construct_columns(self, path):
-        for row in self.train:
+        for i, row in enumerate(self.train):
             for column in row:
                 if column not in self.columns:
                     self.columns[column] = []
-                self.columns[column].append(row[column])
+                self.columns[column].append((row[column], i))
 
     def constructFillers(self):
         for key in self.tags:
             self.fillers[key] = NumericAverage(
-                self.columns[key]) if self.tags[key] == 'NUMERIC' else FindingCommonValue(self.columns[key])
-        self.classifier_column = self.columns['class']
+                list(map(lambda tup: tup[0], self.columns[key]))) if self.tags[key] == 'NUMERIC' else FindingCommonValue(list(map(lambda tup: tup[0], self.columns[key])))
+        self.classifier_column = list(
+            map(lambda tup: tup[0], self.columns['class']))
 
     def clean_up(self):
         if self.files_loaded:
@@ -82,14 +78,12 @@ class ProcessCSV:
             self.fill_empty_values()
             self.convert_numeric_columns()
             # after cleanup, no need to wait for user input, can start analyzing some of the data
-            self.count_classes()
-            self.calc_classes_entropy()
 
     def convert_numeric_columns(self):
         for label in self.tags:
             if self.tags[label] == 'NUMERIC':
                 self.columns[label] = list(
-                    map(lambda x: float(x), self.columns[label]))
+                    map(lambda tup: (float(tup[0]), tup[1]), self.columns[label]))
 
     def delete_row_where_empty_class(self):
         # Iterate over the class column values
@@ -105,15 +99,18 @@ class ProcessCSV:
                 if self.columns[column][index] == '':
                     self.columns[column][index] = self.fillers[column]
 
-    def count_classes(self):
-        for val in self.classifier_column:
-            if val in self.classifications_counters:
-                self.classifications_counters[val] += 1
+    def count_classes(self, column):
+        classification_counters = {}
+        for val in column:
+            if self.classifier_column[val] in classification_counters:
+                classification_counters[self.classifier_column[val]] += 1
             else:
-                self.classifications_counters[val] = 1
+                classification_counters[self.classifier_column[val]] = 1
+        return classification_counters
 
-    def calc_classes_entropy(self):
-        self.class_entropy = entropy(self.classifications_counters.values())
+    def calc_classes_entropy(self, column):
+        classed_column = list(map(lambda tup: tup[1], column))
+        return entropy(self.count_classes(classed_column).values())
 
     def find_best_descritization_split_by_entropy(self, column):
         """ For each split point build table to use for calculates """
@@ -128,22 +125,24 @@ class ProcessCSV:
                 '>=': {}
             }
 
-            for specific_class in classifications_counters:
+            for specific_class in set(classifier_column):
                 entropy_table['<'][specific_class] = 0
                 entropy_table['>='][specific_class] = 0
 
-            for col_value_index in range(len(column)):
-                if column[col_value_index] < split_point:
-                    entropy_table['<'][classifier_column
-                                       [col_value_index]] += 1
+            for col_value in column:
+                if col_value[0] < split_point:
+                    entropy_table['<'][classifier_column[
+                        col_value[1]]] += 1
                 else:
-                    entropy_table['>='][classifier_column
-                                        [col_value_index]] += 1
+                    entropy_table['>='][classifier_column[
+                        col_value[1]]] += 1
             return entropy_table
 
         # If column has 1 element, return the element
         if (len(column) == 1):
-            return column[0]
+            g = column[0][0]
+            print('for col: ', column, '\nbest gain: ', g)
+            return g
         # other wise check for all possible split points
         possible_split_points = set()
 
@@ -152,21 +151,24 @@ class ProcessCSV:
         # define possible split points
         for x in range(col_len):
             for y in range(x + 1, col_len):
-                possible_split_points.add((column[x] + column[y]) / 2)
+                possible_split_points.add((column[x][0] + column[y][0]) / 2)
 
         if len(possible_split_points) == 1:
-            return possible_split_points.pop()
+            g = possible_split_points.pop()
+            print('for col: ', column, '\nbest gain: ', g)
+            return g
         # calculate gains of each possible split point
         gains = dict(map(lambda split_point: (split_point,
                                               calc_gain(split_point,
                                                         column,
-                                                        construct_entropy_table_for_split_point(self.classifications_counters,
+                                                        construct_entropy_table_for_split_point(self.count_classes(list(map(lambda tup: tup[1], column))).values(),
                                                                                                 split_point,
                                                                                                 column,
                                                                                                 self.classifier_column
                                                                                                 ),
-                                                        self.instances_number,
-                                                        self.class_entropy
+                                                        len(column),
+                                                        self.calc_classes_entropy(
+                                                            column)
                                                         ),
 
                                               ),
@@ -176,24 +178,35 @@ class ProcessCSV:
         # save only those with best gains (for the posibillity of multiple splits having the same score)
         best_gains = list(filter(lambda x: gains[x] == max(
             list(gains.values())), gains))
-
         # if found 1 best gain return it
         if len(best_gains) == 1:
+            print('for col: ', column, '\nbest gain: ', best_gains[0])
             return best_gains[0]
         else:
             # return some random split point with a highest gain
-            return best_gains[random.randint(0, len(best_gains) - 1)]
+            g = best_gains[random.randint(0, len(best_gains) - 1)]
+            print('for col: ', column, '\nbest gain: ', g)
+            return g
 
     def entropy_discretization(self, column, num_of_bins):
+
+        # column_classed = list(
+        #     map(lambda x: (column[x], x), range(len(column))))
+        # print(column_classed)
 
         if num_of_bins == len(column):
             return column
         elif num_of_bins == 1:
             return column
+        elif num_of_bins > len(column):
+            return
+        elif num_of_bins < 1:
+            return
         else:
 
             def calc_split_index(column_to_split, best_split):
-                col = list(filter(lambda x: x < best_split, column_to_split))
+                col = list(
+                    filter(lambda x: x[0] < best_split, column_to_split))
                 return len(col) - 1 if len(col) > 0 else len(col)
 
             sorted_col = sorted(column)
@@ -201,7 +214,7 @@ class ProcessCSV:
             column_queue = queue.Queue()
             column_queue.put(sorted_col)
 
-            while(len(bins) < num_of_bins):
+            while(len(bins) < num_of_bins - 1):
                 if column_queue.not_empty:
                     current_col = column_queue.get()
                     best_split = self.find_best_descritization_split_by_entropy(
@@ -211,7 +224,6 @@ class ProcessCSV:
                     if (len(sorted_col) > 2):
                         column_queue.put(sorted_col[:split_index + 1])
                         column_queue.put(sorted_col[split_index + 1:])
-
             return sorted(bins)
 
     def discretisize(self, num_of_bins):
@@ -220,16 +232,16 @@ class ProcessCSV:
 
         def check_new_label(value, bins):
             for label_index in range(len(bins)):
-                if value <= bins[label_index]:
+                if value < bins[label_index]:
                     return label_index
-            return len(bins) - 1
+            return len(bins)
 
         for column in self.columns:
             if self.tags[column] == 'NUMERIC':
                 bins = self.entropy_discretization(
                     self.columns[column], num_of_bins)
                 self.columns[column] = list(map(lambda x: check_new_label(
-                    x, bins), self.columns[column]))
+                    x[0], bins), self.columns[column]))
 
         print('Finished Discretisizing')
         print(datetime.datetime.now())
@@ -243,7 +255,8 @@ class ProcessCSV:
             for index in range(self.instances_number):
                 row = {}
                 for column in self.columns:
-                    row[column] = self.columns[column][index]
+                    row[column] = self.columns[column][index] if type(
+                        self.columns[column][index]) is not tuple else self.columns[column][index][0]
                 writer.writerow(row)
 
         # def get_attr_numbers(self):
