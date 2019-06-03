@@ -80,7 +80,8 @@ class ProcessCSV:
         for label in self.tags:
             if self.tags[label] == 'NUMERIC':
                 self.columns[label] = list(
-                    map(lambda tup: (float(tup[0]), tup[1]), self.columns[label]))
+                    map(lambda tup: (
+                        float(tup[0]), tup[1]), self.columns[label]))
 
     def delete_row_where_empty_class(self):
         # Iterate over the class column values
@@ -93,8 +94,9 @@ class ProcessCSV:
     def fill_empty_values(self):
         for column in self.columns:
             for index in range(len(self.columns[column])):
-                if self.columns[column][index] == '':
-                    self.columns[column][index] = self.fillers[column]
+                if self.columns[column][index][0] == '':
+                    self.columns[column][index] = (
+                        self.fillers[column], self.columns[column][index][1])
 
     def count_classes(self, column):
         classification_counters = {}

@@ -57,6 +57,4 @@ def calc_info(entropy_table, total_number_of_instances):
 
 
 def calc_gain(split_point, column, entropy_table, total_number_of_instances, total_entropy):
-    if split_point == 23.0:
-        print('wtf')
     return total_entropy - calc_info(entropy_table, total_number_of_instances)
