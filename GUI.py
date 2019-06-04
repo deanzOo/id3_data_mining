@@ -1,5 +1,8 @@
 from tkinter import *
 from tkinter import filedialog
+from ProcessCSV import *
+
+p=ProcessCSV()
 
 #Create Window:
 window = Tk()
@@ -10,12 +13,14 @@ folder_path = StringVar()
 #Functions:
 def browser_button():
     global folder_path
-    path = filedialog.askdirectory()
+    path = str(filedialog.askdirectory())
+    print(path)
     folder_path.set(path)
     return path
 
 def get_num_of_bins():
     inputValue = binstxt.get("1.0","end -1c")
+    print(inputValue)
     return inputValue
 
 
@@ -36,7 +41,7 @@ buttombtn = Button(window, text="Browser...", command=lambda: browser_button())
 buttombtn.grid(column=2, row=0)
 binsbtn = Button(window, text="Submit",command=lambda: get_num_of_bins())
 binsbtn.grid(column=2, row=1)
-cleanbtn = Button(window, text="Clean")
+cleanbtn = Button(window, text="Clean",command = lambda :p.clean_up())
 cleanbtn.grid(column=0, row=3)
 discretizationbtn = Button(window, text="Discretization")
 discretizationbtn.grid(column=0, row=4)
