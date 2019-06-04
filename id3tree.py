@@ -57,6 +57,24 @@ def attributes_filter(data, _bin, max_gain_attribute):
     return filtered_data
 
 
+def calacGainForAtt(self, colms):
+
+    gains = {}
+    sum_of_bins_entropy = 0
+
+    class_entropy = entropy(colms['class'].values())
+
+    for att in colms:
+        if att is not 'class':
+            for b in att:
+                bin_entropy = self.calc_bin_entropy(b, att)
+                sum_of_bins_entropy += bin_entropy
+            sum_of_bins_entropy = 0
+        gains[att] = class_entropy - sum_of_bins_etropy
+
+    return gains
+
+
 def id3Tree(data):
 
     node = {}
