@@ -229,21 +229,12 @@ class ProcessCSV:
             if self.tags[col] == 'NUMERIC':
                 num_of_numeric += 1
 
-        # toolbar_width = 40
-        # sys.stdout.write("[%s]" % (" " * toolbar_width))
-        # sys.stdout.flush()
-        # # return to start of line, after '['
-        # sys.stdout.write("\b" * (toolbar_width+1))
-
         for column in self.columns:
             if self.tags[column] == 'NUMERIC':
                 bins = self.entropy_discretization(
                     self.columns[column], num_of_bins)
                 self.columns[column] = list(map(lambda x: check_new_label(
                     x[0], bins), self.columns[column]))
-                # sys.stdout.write("-")
-                # sys.stdout.flush()
-        # sys.stdout.write("]\n")  # this ends the progress bar
 
         print('Finished Discretisizing')
         print(datetime.datetime.now())
