@@ -1,70 +1,82 @@
 from Functions import *
+import csv
 
 
-class Node:
+def open_files(self, path, filename):
+    # Try opening train file and structure file
+    self.trained_file = open(path + '' + filename, 'r')
+    # Start deconstructing the files into workable data
 
-    def __init__(self, data):
-        if len(data) == 1:
-            return
-        selected_attribute_column = calc_best_attribute_gain(data)
-        bins = set(column)
-        for _bin in bins:
-            for column in data:
-                if column is not selected_attribute_column:
-                    for val in
 
-    # def print_node(self):
-    #     print(self.data)
+row_file = csv.reader(open('train_discretization_4.csv', newline=''))
+col_file = csv.DictReader(open('train_discretization_4.csv', 'r'))
 
-    def calc_bin_entropy(selected_bin, attribute_column):
-        return entropy(list(filter(lambda value: value == selected_bin, attribute_column)))
+rows = [row for row in row_file]
+attributes = {}
+for i, row in enumerate(col_file):
+    for attribute in row:
+        if attribute not in attributes:
+            attributes[attribute] = []
+        attributes[attribute].append(row[attribute])
 
-    def calacGainForAtt(self, colms):
+data = {}
+data['rows'], data['attributes'] = rows, attributes
 
-        gains = {}
-        sum_of_bins_entropy = 0
+# tree = id3Tree(data)
+print(len(data['attributes']['age']))
+print(len(data['rows']))
 
-        class_entropy = entropy(colms['class'].values())
 
-        for att in colms:
-            if att is not 'class':
-                for b in att:
-                    bin_entropy = self.calc_bin_entropy(b, att)
-                    sum_of_bins_entropy += bin_entropy
-                sum_of_bins_entropy = 0
-            gains[att] = class_entropy - sum_of_bins_etropy
+print(attributes_filter('0', 'age')['rows'])
 
-        return gains
 
-        def id3Tree(self, exemples):
+def attributes_filter(data, _bin, max_gain_attribute):
+    filtered_data = {}
+    filtered_data['rows'] = data['rows']
+    filtered_data['attributes'] = data['attributes']
 
-            if len(exemples) == 1:
-                _class = FindingCommonValue(exemples['class'].values())
-                return Node(_class)
+    dont_keep = []
 
-            gains = calacGainForAtt(exemples)
-            max_gain_attribute = gains.keys()[max(gains.values())]
+    filter_by = filtered_data['attributes'].pop(max_gain_attribute)
 
-            root = Node(max_gain_attribute, )
+    for index in range(len(filter_by)):
+        if filter_by[index] != _bin:
+            dont_keep.append(index)
 
-            root = Node(exemples)
+    popped = 0
+    for index in dont_keep:
+        filtered_data['rows'].pop(index + 1 - popped)
+        for attr in filtered_data['attributes']:
+            filtered_data['attributes'][attr].pop(
+                index - popped)
+        popped += 1
 
-            new_root = Node(None)
+    filtered_data['rows'][0].pop(
+        filtered_data['rows'][0].index(max_gain_attribute))
 
-            while root == None:
-                if new_root == None:
-                    new_root = Node(exemples[max])
-                    if 'max' in exemples:
-                        del exemples['max']
-                    elif root.right == None:
-                        root.right = Node(exemples[max])
-                        if 'max' in exemples:
-                            del exemples['max']
-                    else:
-                        new_root.left = Node(exemples[max])
-                        if 'max' in exemples:
-                            del exemples['max']
+    return filtered_data
 
-        # def build_for_att_bins_and_numbers(col, bin_num)
 
-    #     {age: 0: {yes: 4, no: 5}, 1: {yes: 4, no: 5}, 2: {yes: 4, no: 5}}
+def id3Tree(data):
+
+    node = {}
+
+    if len(data['attributes']) == 1:
+        _class = FindingCommonValue(data['attributes']['class'].values())
+        node['attribute'] = _class
+        node['nodes'] = None
+        return node
+
+    gains = calacGainForAtt(data['attributes'])
+    max_gain_attribute = gains.keys()[max(gains.values())]
+
+    node['attribute'] = max_gain_attribute
+    node['nodes'] = []
+
+    bins = set(data['attributes'][max_gain_attribute])
+
+    for _bin in bins:
+        node['nodes'].append(
+            id3Tree(attributes_filter(data, _bin, max_gain_attribute)))
+
+    return node
