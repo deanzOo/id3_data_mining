@@ -22,13 +22,6 @@ for i, row in enumerate(col_file):
 data = {}
 data['rows'], data['attributes'] = rows, attributes
 
-# tree = id3Tree(data)
-print(len(data['attributes']['age']))
-print(len(data['rows']))
-
-
-print(attributes_filter('0', 'age')['rows'])
-
 
 def attributes_filter(data, _bin, max_gain_attribute):
     filtered_data = {}
@@ -56,21 +49,23 @@ def attributes_filter(data, _bin, max_gain_attribute):
 
     return filtered_data
 
-
-def calacGainForAtt(self, colms):
+def calc_bin_entropy(_bin, att):
+    return entropy(filter(lambda x: x ==_bin, att))
+def calacGainForAtt( data):
 
     gains = {}
     sum_of_bins_entropy = 0
 
-    class_entropy = entropy(colms['class'].values())
+    class_entropy = entropy(data['class'].values())
 
-    for att in colms:
+    for att in data['attributes']:
         if att is not 'class':
             for b in att:
-                bin_entropy = self.calc_bin_entropy(b, att)
+                bin_entropy = calc_bin_entropy(b, att)
                 sum_of_bins_entropy += bin_entropy
             sum_of_bins_entropy = 0
-        gains[att] = class_entropy - sum_of_bins_etropy
+        gains[att] = class_entropy - sum_of_bins_entropy
+        sum_of_bins_entropy = 0
 
     return gains
 
@@ -98,3 +93,5 @@ def id3Tree(data):
             id3Tree(attributes_filter(data, _bin, max_gain_attribute)))
 
     return node
+
+id3Tree(data)
