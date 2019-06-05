@@ -1,5 +1,6 @@
 from Functions import *
 import csv
+import copy
 
 
 def open_files(self, path, filename):
@@ -24,13 +25,11 @@ data['rows'], data['attributes'] = rows, attributes
 
 
 def attributes_filter(data, _bin, max_gain_attribute):
-    filtered_data = {}
-    filtered_data['rows'] = data['rows']
-    filtered_data['attributes'] = data['attributes']
+    # filtered_data = dict(data)
 
     dont_keep = []
 
-    filter_by = filtered_data['attributes'].pop(max_gain_attribute)
+    filter_by = data['attributes'].pop(max_gain_attribute)
 
     for index in range(len(filter_by)):
         if filter_by[index] != _bin:
@@ -38,16 +37,16 @@ def attributes_filter(data, _bin, max_gain_attribute):
 
     popped = 0
     for index in dont_keep:
-        filtered_data['rows'].pop(index + 1 - popped)
-        for attr in filtered_data['attributes']:
-            filtered_data['attributes'][attr].pop(
+        data['rows'].pop(index + 1 - popped)
+        for attr in data['attributes']:
+            data['attributes'][attr].pop(
                 index - popped)
         popped += 1
 
-    filtered_data['rows'][0].pop(
-        filtered_data['rows'][0].index(max_gain_attribute))
+    data['rows'][0].pop(
+        data['rows'][0].index(max_gain_attribute))
 
-    return filtered_data
+    return data
 
 
 def count_classes(column):
@@ -75,12 +74,12 @@ def calacGainForAtt(data):
     class_entropy = entropy(list(count_classes(
         data['attributes']['class']).values()))
 
-    for att in data['attributes']['class']:
+    for att in data['attributes']:
         if att is not 'class':
-            for b in att:
-                bin_entropy = calc_bin_entropy(data, b, att)
-                sum_of_bins_entropy += bin_entropy
-            sum_of_bins_entropy = 0
+            for b in set(data['attributes'][att]):
+                bin_entropy = calc_bin_entropy(copy.deepcopy(data), b, att)
+                sum_of_bins_entropy += len(list(filter(lambda val: val == att, data['attributes'][att])))/len(
+                    data['attributes'][att]) * bin_entropy
         gains[att] = class_entropy - sum_of_bins_entropy
         sum_of_bins_entropy = 0
 
