@@ -33,6 +33,7 @@ def FindingCommonValue(column):
 
 
 def entropy(vals):
+    print(vals)
     sum = 0.0
     norm = 0.0
     for v in vals:

@@ -49,19 +49,36 @@ def attributes_filter(data, _bin, max_gain_attribute):
 
     return filtered_data
 
-def calc_bin_entropy(_bin, att):
-    return entropy(filter(lambda x: x ==_bin, att))
-def calacGainForAtt( data):
+
+def count_classes(column):
+    classification_counters = {}
+    if len(set(column)) == 1:
+        classification_counters[set(column).pop()] = len(column)
+        return classification_counters
+    for val in column:
+        if val not in classification_counters:
+            classification_counters[val] = 0
+        classification_counters[val] += 1
+    return classification_counters
+
+
+def calc_bin_entropy(data, _bin, att):
+    new_data = attributes_filter(data, _bin, att)
+
+    return entropy(count_classes(new_data['attributes']['class']).values())
+
+
+def calacGainForAtt(data):
 
     gains = {}
     sum_of_bins_entropy = 0
+    class_entropy = entropy(list(count_classes(
+        data['attributes']['class']).values()))
 
-    class_entropy = entropy(data['class'].values())
-
-    for att in data['attributes']:
+    for att in data['attributes']['class']:
         if att is not 'class':
             for b in att:
-                bin_entropy = calc_bin_entropy(b, att)
+                bin_entropy = calc_bin_entropy(data, b, att)
                 sum_of_bins_entropy += bin_entropy
             sum_of_bins_entropy = 0
         gains[att] = class_entropy - sum_of_bins_entropy
@@ -80,7 +97,7 @@ def id3Tree(data):
         node['nodes'] = None
         return node
 
-    gains = calacGainForAtt(data['attributes'])
+    gains = calacGainForAtt(data)
     max_gain_attribute = gains.keys()[max(gains.values())]
 
     node['attribute'] = max_gain_attribute
@@ -93,5 +110,6 @@ def id3Tree(data):
             id3Tree(attributes_filter(data, _bin, max_gain_attribute)))
 
     return node
+
 
 id3Tree(data)
