@@ -75,14 +75,14 @@ def calacGainForAtt(data):
         data['attributes']['class']).values()))
 
     for att in data['attributes']:
-        if att is not 'class':
-            for b in set(data['attributes'][att]):
-                bin_entropy = calc_bin_entropy(copy.deepcopy(data), b, att)
-                sum_of_bins_entropy += len(list(filter(lambda val: val == att, data['attributes'][att])))/len(
+        if att != 'class':
+            for _bin in set(data['attributes'][att]):
+                bin_entropy = calc_bin_entropy(copy.deepcopy(data), _bin, att)
+                sum_of_bins_entropy += len(list(filter(lambda val: val == _bin, data['attributes'][att])))/len(
                     data['attributes'][att]) * bin_entropy
         gains[att] = class_entropy - sum_of_bins_entropy
         sum_of_bins_entropy = 0
-
+    gains.pop('class')
     return gains
 
 
@@ -97,7 +97,9 @@ def id3Tree(data):
         return node
 
     gains = calacGainForAtt(data)
-    max_gain_attribute = gains.keys()[max(gains.values())]
+
+    max_gain_attribute = list(
+        filter(lambda key: gains[key] == max(gains.values()), gains)).pop()
 
     node['attribute'] = max_gain_attribute
     node['nodes'] = []
