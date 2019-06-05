@@ -91,7 +91,7 @@ def id3Tree(data):
     node = {}
 
     if len(data['attributes']) == 1:
-        _class = FindingCommonValue(data['attributes']['class'].values())
+        _class = FindingCommonValue(data['attributes']['class'])
         node['attribute'] = _class
         node['nodes'] = None
         return node
@@ -108,9 +108,10 @@ def id3Tree(data):
 
     for _bin in bins:
         node['nodes'].append(
-            id3Tree(attributes_filter(data, _bin, max_gain_attribute)))
+            id3Tree(attributes_filter(copy.deepcopy(data), _bin, max_gain_attribute)))
 
     return node
 
 
-id3Tree(data)
+root = id3Tree(data)
+print('stam')
