@@ -9,19 +9,14 @@ def open_files(self, path, filename):
     # Start deconstructing the files into workable data
 
 
-row_file = csv.reader(open('train_discretization_3.csv', newline=''))
 col_file = csv.DictReader(open('train_discretization_3.csv', 'r'))
 
-rows = [row for row in row_file]
 attributes = {}
-for i, row in enumerate(col_file):
+for row in col_file:
     for attribute in row:
         if attribute not in attributes:
             attributes[attribute] = []
         attributes[attribute].append(row[attribute])
-
-data = {}
-data['rows'], data['attributes'] = rows, attributes
 
 
 def attributes_filter(data, _bin, max_gain_attribute):
@@ -29,59 +24,56 @@ def attributes_filter(data, _bin, max_gain_attribute):
 
     dont_keep = []
 
-    filter_by = data['attributes'].pop(max_gain_attribute)
+    max_gain_attribute_column = data.pop(max_gain_attribute)
 
-    for index in range(len(filter_by)):
-        if filter_by[index] != _bin:
+    for index in range(len(max_gain_attribute_column)):
+        if max_gain_attribute_column[index] != _bin:
             dont_keep.append(index)
 
     popped = 0
     for index in dont_keep:
-        data['rows'].pop(index + 1 - popped)
-        for attr in data['attributes']:
-            data['attributes'][attr].pop(
+        for attr in data:
+            data[attr].pop(
                 index - popped)
         popped += 1
-
-    data['rows'][0].pop(
-        data['rows'][0].index(max_gain_attribute))
 
     return data
 
 
 def count_categorized_instances_in_attribute(column):
-    classification_counters = {}
+    categories_counters = {}
     if len(set(column)) == 1:
-        classification_counters[set(column).pop()] = len(column)
-        return classification_counters
+        categories_counters[set(column).pop()] = len(column)
+        return categories_counters
     for val in column:
-        if val not in classification_counters:
-            classification_counters[val] = 0
-        classification_counters[val] += 1
-    return classification_counters
+        if val not in categories_counters:
+            categories_counters[val] = 0
+        categories_counters[val] += 1
+    return categories_counters
 
 
-def calc_bin_entropy(data, _bin, att):
-    filtered_data_by_bin = attributes_filter(data, _bin, att)
+def calc_bin_entropy(data, _bin, attribute):
+    filtered_data_by_bin = attributes_filter(data, _bin, attribute)
 
-    return entropy(count_categorized_instances_in_attribute(filtered_data_by_bin['attributes']['class']).values())
+    return entropy(count_categorized_instances_in_attribute(filtered_data_by_bin['class']).values())
 
 
-def calc_gains_of_whole_attribute(data):
+def calc_gains_of_attributes(data):
 
-    gains = {}
-    sum_of_bins_entropy = 0
     class_entropy = entropy(list(count_categorized_instances_in_attribute(
-        data['attributes']['class']).values()))
+        data['class']).values()))
     if class_entropy == 0:
         return 0
 
-    for att in data['attributes']:
+    gains = {}
+    sum_of_bins_entropy = 0
+
+    for att in data:
         if att != 'class':
-            for _bin in set(data['attributes'][att]):
+            for _bin in set(data[att]):
                 bin_entropy = calc_bin_entropy(copy.deepcopy(data), _bin, att)
-                sum_of_bins_entropy += len(list(filter(lambda val: val == _bin, data['attributes'][att])))/len(
-                    data['attributes'][att]) * bin_entropy
+                sum_of_bins_entropy += len(list(filter(lambda val: val == _bin, data[att])))/len(
+                    data[att]) * bin_entropy
         gains[att] = class_entropy - sum_of_bins_entropy
         sum_of_bins_entropy = 0
     gains.pop('class')
@@ -92,38 +84,44 @@ def id3Tree(data):
 
     node = {}
 
-    if len(data['attributes']) == 1:
-        node['attribute'] = FindingCommonValue(data['attributes']['class'])
+    if len(data) == 1:
+        # only class column left => find most common value and create leaf
+        node['attribute'] = FindingCommonValue(data['class'])
         node['nodes'] = None
         return node
 
-    gains = calc_gains_of_whole_attribute(data)
+    gains = calc_gains_of_attributes(data)
 
     if gains == 0:
-        node['attribute'] = FindingCommonValue(data['attributes']['class'])
+        # gains = 0 if class_entropy = 0 which means we can decide a leaf based on common value
+        node['attribute'] = FindingCommonValue(data['class'])
         node['nodes'] = None
         return node
 
     max_gain_attribute = list(
         filter(lambda key: gains[key] == max(gains.values()), gains)).pop()
 
+    # create node using the attribute with maximum gain
     node['attribute'] = max_gain_attribute
-    node['nodes'] = []
+    # create empty dict for children (each index = bin label)
+    node['nodes'] = {}
+    # check for labels with no repeats, sorted to be used as indexs
+    bins = sorted(set(data[max_gain_attribute]))
 
-    bins = set(data['attributes'][max_gain_attribute])
-
+    # for each label
     for _bin in bins:
-        node['nodes'].append(
-            id3Tree(attributes_filter(copy.deepcopy(data), _bin, max_gain_attribute)))
-        if node['nodes'][-1]['nodes'] is not None:
-            data['attributes'].pop(node['nodes'][-1]['attribute'])
-            index_of_att = data['rows'][0].index(
-                node['nodes'][-1]['attribute'])
-            for row in data['rows']:
-                row.pop(index_of_att)
+        # => copy data to avoid mutation from lower level
+        # => filter data by bin
+        # => create a new sub tree from the result of id3 tree creation on the filtered data
+        # => add bin to children of current node
+        node['nodes'][_bin] = id3Tree(attributes_filter(
+            copy.deepcopy(data), _bin, max_gain_attribute))
+        # if child is not a leaf, remove attribute from data
+        if node['nodes'][_bin]['nodes'] is not None:
+            data.pop(node['nodes'][_bin]['attribute'])
 
     return node
 
 
-root = id3Tree(data)
+root = id3Tree(attributes)
 print(root)
