@@ -83,18 +83,24 @@ def calc_gains_of_attributes(data):
 def id3Tree(data):
 
     node = {}
+    most_common = FindingCommonValue(data['class'])
+    total_instances = len(data['class'])
+    instances_by_common_class = len(list(filter(lambda val: val == most_common, data['class'])))
+    node['instances_num'] = total_instances
+    node['error'] = (total_instances + instances_by_common_class + 0.5) / total_instances
 
     if len(data) == 1:
         # only class column left => find most common value and create leaf
-        node['attribute'] = FindingCommonValue(data['class'])
-        node['nodes'] = None
+        node['attribute'] = most_common
+        node['nodes'] = None 
         return node
 
     gains = calc_gains_of_attributes(data)
 
     if gains == 0:
         # gains = 0 if class_entropy = 0 which means we can decide a leaf based on common value
-        node['attribute'] = FindingCommonValue(data['class'])
+        # most_common = FindingCommonValue(data['class'])
+        node['attribute'] = most_common
         node['nodes'] = None
         return node
 
