@@ -1,5 +1,6 @@
 from Functions import *
 from id3tree import *
+import csv
 
 
 def pre_order_pruning(tree):
@@ -42,4 +43,14 @@ def should_prune(tree):
 
 
 # pessimistic_error_pruning(id3Tree(attributes, None)) ------------- RUN EXAMPLE, RESULTS IN TREE AFTER PRUNING
-pessimistic_error_pruning(id3Tree(attributes, None))
+pruned_tree = pessimistic_error_pruning(id3Tree(attributes, None))
+
+with open('rules.csv', mode='w', newline='') as rules_file:
+    rules_writer = csv.writer(
+        rules_file, delimiter=',', quoting=csv.QUOTE_NONE, escapechar='\\')
+
+    # rules_writer.writerow(['John Smith', 'Accounting', 'November'])
+    # rules_writer.writerow(['Erica Meyers', 'IT', 'March'])
+
+    sweep_tree(pruned_tree, [], rules_writer)
+    rules_file.close()

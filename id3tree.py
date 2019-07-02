@@ -1,6 +1,5 @@
 from Functions import *
 import csv
-import copy
 
 
 def open_files(self, path, filename):
@@ -9,7 +8,7 @@ def open_files(self, path, filename):
     # Start deconstructing the files into workable data
 
 
-col_file = csv.DictReader(open('train_discretization_3.csv', 'r'))
+col_file = csv.DictReader(open('train_discretization_5.csv', 'r'))
 
 attributes = {}
 for row in col_file:
@@ -80,26 +79,24 @@ def calc_gains_of_attributes(data):
     return gains
 
 
-def id3Tree(data):
+def id3Tree(data, parent):
 
     node = {}
+    node['parent'] = parent
     most_common = FindingCommonValue(data['class'])
+    node['most_common'] = most_common
     total_instances = len(data['class'])
-    instances_by_common_class = len(list(filter(lambda val: val == most_common, data['class'])))
+    instances_by_common_class = len(
+        list(filter(lambda val: val == most_common, data['class'])))
     node['instances_num'] = total_instances
-    node['error'] = (total_instances + instances_by_common_class + 0.5) / total_instances
-
-    if len(data) == 1:
-        # only class column left => find most common value and create leaf
-        node['attribute'] = most_common
-        node['nodes'] = None 
-        return node
+    node['instances_by_common_class'] = instances_by_common_class
+    node['error'] = (total_instances +
+                     instances_by_common_class + 0.5) / total_instances
 
     gains = calc_gains_of_attributes(data)
 
-    if gains == 0:
-        # gains = 0 if class_entropy = 0 which means we can decide a leaf based on common value
-        # most_common = FindingCommonValue(data['class'])
+    if len(data) == 1 or gains == 0:
+        # only class column left => find most common value and create leaf
         node['attribute'] = most_common
         node['nodes'] = None
         return node
@@ -113,7 +110,6 @@ def id3Tree(data):
     node['nodes'] = {}
     # check for labels with no repeats, sorted to be used as indexs
     bins = sorted(set(data[max_gain_attribute]))
-
     # for each label
     for _bin in bins:
         # => copy data to avoid mutation from lower level
@@ -121,13 +117,17 @@ def id3Tree(data):
         # => create a new sub tree from the result of id3 tree creation on the filtered data
         # => add bin to children of current node
         node['nodes'][_bin] = id3Tree(attributes_filter(
-            copy.deepcopy(data), _bin, max_gain_attribute))
+            copy.deepcopy(data), _bin, max_gain_attribute), node)
         # if child is not a leaf, remove attribute from data
         if node['nodes'][_bin]['nodes'] is not None:
             data.pop(node['nodes'][_bin]['attribute'])
 
+    if len(bins) == 1:
+        _bin = list(node['nodes'].keys()).pop()
+        node['attribute'] = node['nodes'][_bin]['attribute']
+        node['nodes'] = node['nodes'][_bin]['nodes']
+
     return node
 
 
-root = id3Tree(attributes)
-print(root)
+# root = id3Tree(attributes, None) ------ EXAMPLE RUN, RESULTS IN DESICION TREE

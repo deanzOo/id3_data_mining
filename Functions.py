@@ -2,6 +2,7 @@ from math import log
 import sys
 import time
 from functools import reduce
+import copy
 # Calculate Average by column index and lists of list matrix
 
 
@@ -58,3 +59,21 @@ def calc_info(entropy_table, total_number_of_instances):
 
 def calc_gain(split_point, column, entropy_table, total_number_of_instances, total_entropy):
     return total_entropy - calc_info(entropy_table, total_number_of_instances)
+
+
+def sweep_tree(tree, line, file_writer):
+    line_cpy = copy.deepcopy(line)
+    if tree['nodes'] != None:
+        for node in tree['nodes']:
+            # print(node, ',', end='')
+            line_cpy.append('{}={}'.format(
+                tree['attribute'], node))
+            sweep_tree(tree['nodes'][node], line_cpy, file_writer)
+            line_cpy.pop()
+    else:
+        line_cpy.append(tree['most_common'])
+        # row = list(map(lambda rule: '{}={}'.format(
+        #     rule[0], rule[1]) if rule is tuple else rule, line_cpy))
+        file_writer.writerow(line_cpy)
+        print(line_cpy, sep=', ')
+        # print(tree['most_common'])
